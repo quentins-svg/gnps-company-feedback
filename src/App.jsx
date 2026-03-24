@@ -326,11 +326,13 @@ export default function App() {
     return () => window.removeEventListener("keydown", h);
   });
 
+  const globalCSS = <style>{CSS}</style>;
+
   // ERROR
   if (phase === "error") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#fff" }}>
-        <style>{CSS}</style>
+        {globalCSS}
         <div style={{ textAlign: "center", maxWidth: 400 }}>
           <AnimatedVLogo size={80} />
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#000", margin: "24px 0 8px" }}>Invalid link</h1>
@@ -344,7 +346,7 @@ export default function App() {
   if (phase === "welcome") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, background: "#fff" }}>
-        <style>{CSS}</style>
+        {globalCSS}
         <Slide dir="forward" key="welcome">
           <div style={{ textAlign: "center", maxWidth: 480 }}>
             <AnimatedVLogo size={120} />
@@ -384,6 +386,7 @@ export default function App() {
     const rated = Object.values(answers).filter(a => a.worked).length;
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, background: "#fff" }}>
+        {globalCSS}
         <Slide dir="forward" key="thanks">
           <div style={{ textAlign: "center", maxWidth: 440 }}>
             <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#000", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 28px", animation: "tickBounce 0.6s cubic-bezier(0.16,1,0.3,1)" }}>
@@ -411,7 +414,7 @@ export default function App() {
   if (phase === "strategy") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: bgColor, transition: "background 0.5s ease" }}>
-        <style>{CSS}</style>
+        {globalCSS}
         <ProgressBar current={step} total={total} />
         <ProgressRing current={step} total={total} />
         <BackBtn onClick={goBack} show={history.length > 0} />
@@ -448,6 +451,7 @@ export default function App() {
   if (phase === "recap") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: "#fff" }}>
+        {globalCSS}
         <ProgressBar current={step} total={total} />
         <ProgressRing current={step} total={total} />
         <BackBtn onClick={goBack} show={history.length > 0} />
@@ -470,6 +474,7 @@ export default function App() {
   if (!team) return null;
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: bgColor, transition: "background 0.5s ease" }}>
+      {globalCSS}
       <ProgressBar current={step} total={total} />
       <ProgressRing current={step} total={total} />
       <BackBtn onClick={goBack} show={history.length > 0} />
