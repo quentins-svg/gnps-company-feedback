@@ -277,6 +277,7 @@ export default function App() {
   const urlToken = urlParams.get("t");
   const urlDepartment = urlParams.get("department");
   const urlName = urlParams.get("name");
+  const urlQuarter = urlParams.get("quarter");
   // Keep backward compat: if "bu" param exists but not "department", use bu
   const urlBU = urlParams.get("bu");
   const dept = urlDepartment || urlBU || null;
@@ -285,6 +286,7 @@ export default function App() {
   const [userDepartment] = useState(dept);
   const [userName] = useState(urlName || "Team Member");
   const [token] = useState(urlToken || "");
+  const [quarter] = useState(urlQuarter || "Q1-2026");
   const [teamIdx, setTeamIdx] = useState(0);
   const [subStep, setSubStep] = useState("worked");
   const [answers, setAnswers] = useState({});
@@ -363,7 +365,7 @@ export default function App() {
   const handleSubmit = async () => {
     setSubmitting(true);
     const payload = {
-      token, respondent: userName, department: userDepartment, quarter: "Q2-2026", answers,
+      token, respondent: userName, department: userDepartment, quarter: quarter, answers,
       strategy: { rating: stratRating, feedback: stratFeedback.trim() || DEFAULT_FB },
       submittedAt: new Date().toISOString()
     };
