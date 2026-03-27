@@ -17,7 +17,7 @@ const TEAMS = [
   { id: "hr", name: "HR Management", group: "Corporate" },
   { id: "it", name: "IT", group: "Corporate" },
   { id: "workplace", name: "Workplace", group: "Corporate" },
-  { id: "events", name: "Events", group: "Corporate" },
+  { id: "events", name: "Voodoo Events", subtitle: "Global parties, Office events...", group: "Corporate", customQuestion: "Have you attended any Voodoo events this quarter?" },
 ];
 
 // Department-based exclusion mapping
@@ -547,7 +547,7 @@ export default function App() {
           {subStep === "worked" && (
             <>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#000", margin: "0 0 6px", lineHeight: 1.3, letterSpacing: -0.3 }}>
-                Have you worked with <span style={{ borderBottom: "3px solid #000", paddingBottom: 1 }}>{team.name}</span> this quarter?
+                {team.customQuestion || <>Have you worked with <span style={{ borderBottom: "3px solid #000", paddingBottom: 1 }}>{team.name}</span> this quarter?</>}
               </h2>
               {team.subtitle && <p style={{ fontSize: 13, color: "#BBB", margin: "0 0 32px" }}>{team.subtitle}</p>}
               {!team.subtitle && <div style={{ height: 28 }} />}
