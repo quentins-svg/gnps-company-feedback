@@ -417,7 +417,7 @@ export default function App() {
             <AnimatedVLogo size={120} />
             <div style={{ animation: "floatIn 0.6s 0.8s both" }}>
               <h1 style={{ fontSize: 40, fontWeight: 800, color: "#000", margin: "32px 0 8px", lineHeight: 1.05, letterSpacing: -1.5 }}>Company Feedback</h1>
-              <p style={{ fontSize: 14, color: "#999", margin: "0 0 4px", fontWeight: 500 }}>Q2 2026 · Quarterly NPS Survey</p>
+              <p style={{ fontSize: 14, color: "#999", margin: "0 0 4px", fontWeight: 500 }}>{quarter} · Quarterly NPS Survey</p>
               <div style={{ width: 40, height: 2, background: "#000", margin: "20px auto 24px" }} />
               {userName && userName !== "Team Member" && <h2 style={{ fontSize: 22, fontWeight: 700, color: "#000", margin: "0 0 8px" }}>Hello {userName.split(" ")[0]}</h2>}
               <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: "0 0 8px" }}>Rate your collaboration with transverse teams this quarter.</p>
