@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const WEBHOOK_URL = "https://voodoohr.app.n8n.cloud/webhook/nps-response";
 
+// Updated teams: Sauce + Tune merged into Gaming Tech
 const TEAMS = [
   { id: "ua", name: "User Acquisition", group: "Growth" },
   { id: "crea", name: "Creative", group: "Growth" },
@@ -9,9 +10,7 @@ const TEAMS = [
   { id: "infra", name: "Infrastructure", subtitle: "Building & maintaining our AWS infrastructure", group: "E&D" },
   { id: "centraldata", name: "Central Data", subtitle: "Data Core, VAN — Voodoo Analytics", group: "E&D" },
   { id: "databi", name: "Data & BI for UA", subtitle: "Bidding strategy, LTV prediction", group: "E&D" },
-  { id: "tune", name: "Voodoo Tune", subtitle: "A/B testing, Segmentation", group: "E&D" },
-  { id: "sauce", name: "Voodoo Sauce", group: "E&D" },
-  { id: "gamingtech", name: "Gaming Tech", group: "E&D" },
+  { id: "gamingtech", name: "Gaming Tech", subtitle: "Shared layer of tech incl. Voodoo Sauce/Tune", group: "E&D" },
   { id: "finance", name: "Finance", group: "Corporate" },
   { id: "legal", name: "Legal", group: "Corporate" },
   { id: "ta", name: "Talent Acquisition", group: "Corporate" },
@@ -20,6 +19,34 @@ const TEAMS = [
   { id: "workplace", name: "Workplace", group: "Corporate" },
   { id: "events", name: "Events", group: "Corporate" },
 ];
+
+// Department-based exclusion mapping
+// Key = team id to exclude, Value = array of department patterns that trigger exclusion
+const EXCLUSION_MAP = {
+  ua: ["Growth - UA - Apps", "Growth - UA - Games"],
+  crea: ["Growth - Creative - Games"],
+  admonet: ["Growth - Ad Monet", "Growth - Ad Monet - ADN"],
+  infra: ["Engineering", "Data"],
+  centraldata: ["Engineering", "Data"],
+  databi: ["Engineering", "Data"],
+  gamingtech: ["Engineering", "Data"],
+  finance: ["Accounting, Tax & Treasury", "Controlling"],
+  legal: ["Legal"],
+  ta: [],  // TA has no exclusion — everyone rates TA
+  hr: ["HR"],
+  it: ["IT"],
+  workplace: ["Workplace"],
+  events: ["Workplace"],
+};
+
+// Returns teams eligible for a given department
+function getEligibleTeams(department) {
+  if (!department) return TEAMS;
+  return TEAMS.filter(team => {
+    const excludeDepts = EXCLUSION_MAP[team.id] || [];
+    return !excludeDepts.some(dep => department === dep || department.startsWith(dep + " -"));
+  });
+}
 
 const BU_OPTIONS = ["Growth", "E&D", "Corporate", "Gaming", "Consumer Apps", "CEO Staff"];
 const DEFAULT_FB = "N/A — no specific feedback";
@@ -36,6 +63,8 @@ const CSS = `
 @keyframes floatIn { 0% { opacity:0; transform:translateY(20px) } 100% { opacity:1; transform:translateY(0) } }
 @keyframes tickBounce { 0% { transform:scale(0) } 50% { transform:scale(1.2) } 70% { transform:scale(0.9) } 100% { transform:scale(1) } }
 @keyframes fadeIn { 0% { opacity:0 } 100% { opacity:1 } }
+@keyframes logoPulse { 0%,100% { opacity:1; transform:scale(1) } 50% { opacity:0.6; transform:scale(0.92) } }
+@keyframes dotBounce { 0%,80%,100% { transform:scale(0) } 40% { transform:scale(1) } }
 `;
 
 const AnimatedVLogo = ({ size = 120 }) => {
@@ -51,6 +80,24 @@ const AnimatedVLogo = ({ size = 120 }) => {
     </div>
   );
 };
+
+const LoadingOverlay = () => (
+  <div style={{ position: "fixed", inset: 0, background: "rgba(255,255,255,0.95)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 300, backdropFilter: "blur(4px)" }}>
+    <div style={{ animation: "logoPulse 1.5s ease-in-out infinite" }}>
+      <svg width={72} height={72} viewBox="0 0 120 120" fill="none">
+        <rect width="120" height="120" rx="24" fill="#000" />
+        <path d="M36 30L60 90L84 30" stroke="#fff" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+    <p style={{ fontSize: 15, fontWeight: 600, color: "#000", marginTop: 20, letterSpacing: -0.3 }}>Submitting your feedback</p>
+    <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+      {[0, 1, 2].map(i => (
+        <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#000", animation: `dotBounce 1.4s infinite ease-in-out both`, animationDelay: `${i * 0.16}s` }} />
+      ))}
+    </div>
+    <p style={{ fontSize: 12, color: "#BBB", marginTop: 12 }}>Please wait, this may take a few seconds...</p>
+  </div>
+);
 
 const CelebBurst = ({ show }) => {
   if (!show) return null;
@@ -83,7 +130,7 @@ const ProgressBar = ({ current, total }) => (
   </div>
 );
 
-const TeamCounter = ({ current, total, nextTeamName, group }) => (
+const TeamCounter = ({ current, total, nextTeamName }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, animation: "fadeIn 0.3s ease" }}>
     <span style={{ fontSize: 12, fontWeight: 700, color: "#000", background: "#F0F0F0", borderRadius: 6, padding: "3px 8px" }}>Team {current}/{total}</span>
     {nextTeamName && <span style={{ fontSize: 12, color: "#BBB" }}>Next: {nextTeamName}</span>}
@@ -114,14 +161,14 @@ const Key = ({ label, dark }) => (
   </span>
 );
 
-const Badge = ({ name, bu }) => (
+const Badge = ({ name, department }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", background: "rgba(255,255,255,0.7)", borderRadius: 12, border: "1px solid #F0F0F0", marginBottom: 24 }}>
     <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
       {name.split(" ").map(w => w[0]).join("").slice(0, 2)}
     </div>
     <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: "#000" }}>{name}</div>
-      <div style={{ fontSize: 11, color: "#999" }}>{bu}</div>
+      <div style={{ fontSize: 11, color: "#999" }}>{department}</div>
     </div>
   </div>
 );
@@ -170,7 +217,7 @@ const NPSScale = ({ value, onSelect }) => {
   );
 };
 
-const FBField = ({ icon, label, hint, teamId, fieldKey, feedbackRef }) => (
+const FBField = ({ icon, label, teamId, fieldKey, feedbackRef }) => (
   <div style={{ marginBottom: 14 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
       <span style={{ width: 24, height: 24, borderRadius: 7, background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>{icon}</span>
@@ -189,6 +236,7 @@ const FBField = ({ icon, label, hint, teamId, fieldKey, feedbackRef }) => (
 
 const RecapCard = ({ answers, stratRating, eligible }) => {
   const rated = eligible.filter(t => answers[t.id]?.worked);
+  const skipped = eligible.filter(t => !answers[t.id]?.worked);
   return (
     <div style={{ background: "#FAFAFA", borderRadius: 14, padding: "18px 22px", marginBottom: 24, border: "1px solid #F0F0F0", animation: "fadeIn 0.4s ease" }}>
       <p style={{ fontSize: 12, fontWeight: 700, color: "#000", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: 1 }}>Your scores recap</p>
@@ -206,6 +254,20 @@ const RecapCard = ({ answers, stratRating, eligible }) => {
         {rated.length === 0 && <p style={{ fontSize: 12, color: "#CCC", margin: "4px 0" }}>No teams rated yet</p>}
       </div>
       <p style={{ fontSize: 11, color: "#CCC", margin: "12px 0 0", textAlign: "center" }}>{rated.length} team{rated.length !== 1 ? "s" : ""} rated + strategy</p>
+
+      {skipped.length > 0 && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #E5E5E5" }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "#999", margin: "0 0 10px", textTransform: "uppercase", letterSpacing: 1 }}>Not rated this quarter</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {skipped.map(t => (
+              <span key={t.id} style={{ fontSize: 11, color: "#BBB", background: "#F0F0F0", borderRadius: 6, padding: "4px 10px", fontWeight: 500 }}>{t.name}</span>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "#CCC", margin: "8px 0 0", fontStyle: "italic" }}>
+            {skipped.length} team{skipped.length !== 1 ? "s" : ""} skipped — you indicated you didn't work with {skipped.length !== 1 ? "them" : "this team"} this quarter.
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -213,11 +275,14 @@ const RecapCard = ({ answers, stratRating, eligible }) => {
 export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlToken = urlParams.get("t");
-  const urlBU = urlParams.get("bu");
+  const urlDepartment = urlParams.get("department");
   const urlName = urlParams.get("name");
+  // Keep backward compat: if "bu" param exists but not "department", use bu
+  const urlBU = urlParams.get("bu");
+  const dept = urlDepartment || urlBU || null;
 
   const [phase, setPhase] = useState(urlToken ? "welcome" : "error");
-  const [userBU, setUserBU] = useState(urlBU || null);
+  const [userDepartment] = useState(dept);
   const [userName] = useState(urlName || "Team Member");
   const [token] = useState(urlToken || "");
   const [teamIdx, setTeamIdx] = useState(0);
@@ -232,8 +297,9 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const feedbackRef = useRef({});
 
-  const eligible = TEAMS.filter(t => t.group !== userBU);
-  const total = eligible.length + 2; // +1 strategy (first) +1 recap (last)
+  // Use department-based filtering instead of BU-based
+  const eligible = getEligibleTeams(userDepartment);
+  const total = eligible.length + 2;
   const step = phase === "strategy" ? 1 : phase === "recap" ? total : teamIdx + 2;
   const team = eligible[teamIdx];
   const nextTeam = eligible[teamIdx + 1];
@@ -297,17 +363,16 @@ export default function App() {
   const handleSubmit = async () => {
     setSubmitting(true);
     const payload = {
-      token, respondent: userName, bu: userBU, quarter: "Q2-2026", answers,
+      token, respondent: userName, department: userDepartment, quarter: "Q2-2026", answers,
       strategy: { rating: stratRating, feedback: stratFeedback.trim() || DEFAULT_FB },
       submittedAt: new Date().toISOString()
     };
     try {
       const res = await fetch(WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
-      if (data.success) { nav("forward", "thanks"); }
-      else { alert("Error: " + (data.error || "Submission failed.")); }
-    } catch (err) { console.error(err); alert("Network error. Please try again."); }
-    setSubmitting(false);
+      if (data.success) { setSubmitting(false); nav("forward", "thanks"); }
+      else { setSubmitting(false); alert("Error: " + (data.error || "Submission failed.")); }
+    } catch (err) { console.error(err); setSubmitting(false); alert("Network error. Please try again."); }
   };
 
   useEffect(() => {
@@ -319,7 +384,7 @@ export default function App() {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         if (phase === "survey" && subStep === "feedback") { e.preventDefault(); handleFeedback(); }
         if (phase === "strategy" && stratRating !== null) { e.preventDefault(); handleStrategyNext(); }
-        if (phase === "recap") { e.preventDefault(); handleSubmit(); }
+        if (phase === "recap" && !submitting) { e.preventDefault(); handleSubmit(); }
       }
     };
     window.addEventListener("keydown", h);
@@ -328,7 +393,6 @@ export default function App() {
 
   const globalCSS = <style>{CSS}</style>;
 
-  // ERROR
   if (phase === "error") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "#fff" }}>
@@ -342,7 +406,6 @@ export default function App() {
     );
   }
 
-  // WELCOME
   if (phase === "welcome") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, background: "#fff" }}>
@@ -356,25 +419,23 @@ export default function App() {
               <div style={{ width: 40, height: 2, background: "#000", margin: "20px auto 24px" }} />
               {userName && userName !== "Team Member" && <h2 style={{ fontSize: 22, fontWeight: 700, color: "#000", margin: "0 0 8px" }}>Hello {userName.split(" ")[0]}</h2>}
               <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: "0 0 8px" }}>Rate your collaboration with transverse teams this quarter.</p>
-              <p style={{ fontSize: 13, color: "#CCC", margin: "0 0 32px" }}>~5 min · Start / Keep / Drop format</p>
+              <p style={{ fontSize: 13, color: "#CCC", margin: "0 0 12px" }}>~5 min · Start / Keep / Drop format</p>
+              {userDepartment && (
+                <p style={{ fontSize: 13, color: "#999", margin: "0 0 32px" }}>
+                  Department: <strong style={{ color: "#000" }}>{userDepartment}</strong> · {eligible.length} teams to review
+                </p>
+              )}
             </div>
-            {!urlBU && (
-              <div style={{ animation: "floatIn 0.6s 1s both" }}>
-                <div style={{ background: "#FAFAFA", borderRadius: 14, padding: "18px 22px", marginBottom: 28, textAlign: "left", border: "1px solid #F0F0F0" }}>
-                  <label style={{ fontSize: 10, fontWeight: 700, color: "#BBB", textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 12 }}>Select your BU</label>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {BU_OPTIONS.map(bu => (
-                      <button key={bu} onClick={() => setUserBU(bu)} style={{ padding: "8px 14px", borderRadius: 8, border: userBU === bu ? "2px solid #000" : "1px solid #E5E5E5", background: userBU === bu ? "#000" : "#fff", color: userBU === bu ? "#fff" : "#888", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", fontFamily: "inherit" }}>{bu}</button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
             <div style={{ animation: "floatIn 0.6s 1.1s both" }}>
-              <Btn onClick={() => { if (userBU) nav("forward", "strategy"); }} disabled={!userBU} style={{ width: "100%", padding: "16px 32px", fontSize: 15, borderRadius: 14 }}>
+              <Btn onClick={() => nav("forward", "strategy")} disabled={!userDepartment} style={{ width: "100%", padding: "16px 32px", fontSize: 15, borderRadius: 14 }}>
                 Start survey
               </Btn>
             </div>
+            {!userDepartment && (
+              <p style={{ fontSize: 13, color: "#C62828", marginTop: 16, animation: "floatIn 0.6s 1.2s both" }}>
+                Missing department info. Please use the link you received via Slack.
+              </p>
+            )}
             <p style={{ fontSize: 11, color: "#CCC", fontStyle: "italic", marginTop: 20, animation: "floatIn 0.6s 1.2s both" }}>Your responses are not anonymous and will be shared with team leads.</p>
           </div>
         </Slide>
@@ -382,7 +443,6 @@ export default function App() {
     );
   }
 
-  // THANKS
   if (phase === "thanks") {
     const rated = Object.values(answers).filter(a => a.worked).length;
     return (
@@ -411,7 +471,6 @@ export default function App() {
 
   const bgColor = GROUP_BG[currentGroup] || "#fff";
 
-  // STRATEGY (first question)
   if (phase === "strategy") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: bgColor, transition: "background 0.5s ease" }}>
@@ -421,7 +480,7 @@ export default function App() {
         <BackBtn onClick={goBack} show={history.length > 0} />
         <Slide dir={slideDir} key="strategy">
           <div style={{ maxWidth: 560, margin: "0 auto" }}>
-            <Badge name={userName} bu={userBU} />
+            <Badge name={userName} department={userDepartment} />
             <div style={{ fontSize: 11, fontWeight: 600, color: "#BBB", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>1 / {total}</div>
             <Tag group="Strategy" />
             <h2 style={{ fontSize: 22, fontWeight: 800, color: "#000", margin: "0 0 6px", lineHeight: 1.3, letterSpacing: -0.3 }}>
@@ -448,22 +507,22 @@ export default function App() {
     );
   }
 
-  // RECAP (before submit)
   if (phase === "recap") {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: "#fff" }}>
         {globalCSS}
+        {submitting && <LoadingOverlay />}
         <ProgressBar current={step} total={total} />
         <ProgressRing current={step} total={total} />
-        <BackBtn onClick={goBack} show={history.length > 0} />
+        <BackBtn onClick={goBack} show={history.length > 0 && !submitting} />
         <Slide dir={slideDir} key="recap">
           <div style={{ maxWidth: 560, margin: "0 auto" }}>
-            <Badge name={userName} bu={userBU} />
+            <Badge name={userName} department={userDepartment} />
             <h2 style={{ fontSize: 22, fontWeight: 800, color: "#000", margin: "0 0 6px", lineHeight: 1.3, letterSpacing: -0.3 }}>Review & submit</h2>
             <p style={{ fontSize: 13, color: "#CCC", margin: "0 0 24px" }}>Double-check your scores before submitting.</p>
             <RecapCard answers={answers} stratRating={stratRating} eligible={eligible} />
             <Btn onClick={handleSubmit} disabled={submitting} style={{ width: "100%", padding: "16px 32px", borderRadius: 14 }}>
-              {submitting ? "Submitting..." : "Submit feedback"} <Key label="⌘↵" />
+              Submit feedback <Key label="⌘↵" />
             </Btn>
           </div>
         </Slide>
@@ -471,7 +530,6 @@ export default function App() {
     );
   }
 
-  // SURVEY TEAMS
   if (!team) return null;
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: bgColor, transition: "background 0.5s ease" }}>
@@ -482,8 +540,8 @@ export default function App() {
       <CelebBurst show={showCeleb} />
       <Slide dir={slideDir} key={`${slideKey}-${team.id}-${subStep}`}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <Badge name={userName} bu={userBU} />
-          <TeamCounter current={teamIdx + 1} total={eligible.length} nextTeamName={nextTeam?.name} group={team.group} />
+          <Badge name={userName} department={userDepartment} />
+          <TeamCounter current={teamIdx + 1} total={eligible.length} nextTeamName={nextTeam?.name} />
           <Tag group={team.group} />
 
           {subStep === "worked" && (
@@ -516,9 +574,9 @@ export default function App() {
                 How could <span style={{ borderBottom: "3px solid #000", paddingBottom: 1 }}>{team.name}</span> improve?
               </h2>
               <p style={{ fontSize: 13, color: "#BBB", margin: "0 0 24px" }}>All fields required — pre-filled with N/A if no feedback.</p>
-              <FBField icon="→" label="Start" hint="start" teamId={team.id} fieldKey="start" feedbackRef={feedbackRef} />
-              <FBField icon="↻" label="Keep" hint="keep" teamId={team.id} fieldKey="keep" feedbackRef={feedbackRef} />
-              <FBField icon="×" label="Drop" hint="drop" teamId={team.id} fieldKey="drop" feedbackRef={feedbackRef} />
+              <FBField icon="→" label="Start" teamId={team.id} fieldKey="start" feedbackRef={feedbackRef} />
+              <FBField icon="↻" label="Keep" teamId={team.id} fieldKey="keep" feedbackRef={feedbackRef} />
+              <FBField icon="×" label="Drop" teamId={team.id} fieldKey="drop" feedbackRef={feedbackRef} />
               <Btn onClick={handleFeedback} style={{ width: "100%", marginTop: 8, padding: "16px 32px", borderRadius: 14 }}>
                 {teamIdx < eligible.length - 1 ? "Next team" : "Review & submit"} <Key label="⌘↵" />
               </Btn>
