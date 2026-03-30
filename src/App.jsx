@@ -17,11 +17,10 @@ const TEAMS = [
   { id: "hr", name: "HR Management", group: "Corporate" },
   { id: "it", name: "IT", group: "Corporate" },
   { id: "workplace", name: "Workplace", group: "Corporate" },
-  { id: "events", name: "Voodoo Events", subtitle: "Global parties, Office events...", group: "Corporate", customQuestion: "Have you attended any Voodoo events this quarter?" },
+  { id: "events", name: "Voodoo Events", subtitle: "Global parties, Office events...", group: "Corporate", customQuestion: "Have you attended any Voodoo events this quarter?", customRatingQuestion: "How would you rate the overall quality of Voodoo events this quarter?" },
 ];
 
 // Department-based exclusion mapping
-// Key = team id to exclude, Value = array of department patterns that trigger exclusion
 const EXCLUSION_MAP = {
   ua: ["Growth - UA - Apps", "Growth - UA - Games"],
   crea: ["Growth - Creative - Games"],
@@ -32,14 +31,13 @@ const EXCLUSION_MAP = {
   gamingtech: ["Engineering", "Data"],
   finance: ["Accounting, Tax & Treasury", "Controlling"],
   legal: ["Legal"],
-  ta: [],  // TA has no exclusion — everyone rates TA
+  ta: [],
   hr: ["HR"],
   it: ["IT"],
   workplace: ["Workplace"],
   events: ["Workplace"],
 };
 
-// Returns teams eligible for a given department
 function getEligibleTeams(department) {
   if (!department) return TEAMS;
   return TEAMS.filter(team => {
@@ -217,12 +215,12 @@ const NPSScale = ({ value, onSelect }) => {
   );
 };
 
-const FBField = ({ icon, label, teamId, fieldKey, feedbackRef }) => (
+const FBField = ({ icon, label, teamId, fieldKey, feedbackRef, required }) => (
   <div style={{ marginBottom: 14 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
       <span style={{ width: 24, height: 24, borderRadius: 7, background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>{icon}</span>
       <span style={{ fontSize: 13, fontWeight: 700, color: "#000" }}>{label}</span>
-      <span style={{ fontSize: 10, color: "#CCC" }}>required</span>
+      <span style={{ fontSize: 10, color: required ? "#C62828" : "#CCC" }}>{required ? "required" : "optional"}</span>
     </div>
     <textarea
       defaultValue={feedbackRef.current[teamId]?.[fieldKey] ?? DEFAULT_FB}
@@ -278,7 +276,6 @@ export default function App() {
   const urlDepartment = urlParams.get("department");
   const urlName = urlParams.get("name");
   const urlQuarter = urlParams.get("quarter");
-  // Keep backward compat: if "bu" param exists but not "department", use bu
   const urlBU = urlParams.get("bu");
   const dept = urlDepartment || urlBU || null;
 
@@ -297,9 +294,9 @@ export default function App() {
   const [showCeleb, setShowCeleb] = useState(false);
   const [history, setHistory] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
   const feedbackRef = useRef({});
 
-  // Use department-based filtering instead of BU-based
   const eligible = getEligibleTeams(userDepartment);
   const total = eligible.length + 2;
   const step = phase === "strategy" ? 1 : phase === "recap" ? total : teamIdx + 2;
@@ -311,6 +308,7 @@ export default function App() {
     setHistory(h => [...h, { phase, teamIdx, subStep }]);
     setSlideDir(dir);
     setSlideKey(k => k + 1);
+    setFeedbackError("");
     if (p) setPhase(p);
     if (idx !== undefined) setTeamIdx(idx);
     if (sub) setSubStep(sub);
@@ -322,6 +320,7 @@ export default function App() {
     setHistory(h => h.slice(0, -1));
     setSlideDir("back");
     setSlideKey(k => k + 1);
+    setFeedbackError("");
     setPhase(prev.phase);
     setTeamIdx(prev.teamIdx);
     setSubStep(prev.subStep);
@@ -341,12 +340,34 @@ export default function App() {
   const handleRating = (score) => {
     if (!team) return;
     setAnswers(a => ({ ...a, [team.id]: { ...a[team.id], rating: score } }));
-    nav("forward", null, undefined, "feedback");
+    // If score > 8 (promoter), skip feedback and go to next team
+    if (score > 8) {
+      const fb = feedbackRef.current[team.id] || {};
+      setAnswers(a => ({ ...a, [team.id]: { ...a[team.id], rating: score, start: fb.start?.trim() || DEFAULT_FB, keep: fb.keep?.trim() || DEFAULT_FB, drop: fb.drop?.trim() || DEFAULT_FB } }));
+      celebrate();
+      setTimeout(() => goNext(), 500);
+    } else {
+      nav("forward", null, undefined, "feedback");
+    }
   };
 
   const handleFeedback = () => {
     if (!team) return;
     const fb = feedbackRef.current[team.id] || {};
+    const rating = answers[team.id]?.rating;
+
+    // If rating <= 8, require at least one real feedback field
+    if (rating !== undefined && rating <= 8) {
+      const hasReal = [fb.start, fb.keep, fb.drop].some(
+        v => v && v.trim() && v.trim() !== DEFAULT_FB
+      );
+      if (!hasReal) {
+        setFeedbackError("Please provide at least one Start, Keep, or Drop feedback.");
+        return;
+      }
+    }
+
+    setFeedbackError("");
     setAnswers(a => ({ ...a, [team.id]: { ...a[team.id], start: fb.start?.trim() || DEFAULT_FB, keep: fb.keep?.trim() || DEFAULT_FB, drop: fb.drop?.trim() || DEFAULT_FB } }));
     celebrate();
     setTimeout(() => goNext(), 500);
@@ -533,6 +554,11 @@ export default function App() {
   }
 
   if (!team) return null;
+
+  // Determine if feedback is required (rating <= 8)
+  const currentRating = answers[team.id]?.rating;
+  const feedbackRequired = currentRating !== undefined && currentRating <= 8;
+
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: "56px 24px 24px", background: bgColor, transition: "background 0.5s ease" }}>
       {globalCSS}
@@ -563,7 +589,7 @@ export default function App() {
           {subStep === "rating" && (
             <>
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#000", margin: "0 0 6px", lineHeight: 1.3, letterSpacing: -0.3 }}>
-                Rate your collaboration with <span style={{ borderBottom: "3px solid #000", paddingBottom: 1 }}>{team.name}</span>
+                {team.customRatingQuestion || <>Rate your collaboration with <span style={{ borderBottom: "3px solid #000", paddingBottom: 1 }}>{team.name}</span></>}
               </h2>
               <p style={{ fontSize: 13, color: "#BBB", margin: "0 0 28px" }}>0 = very poor · 10 = excellent</p>
               <NPSScale value={answers[team.id]?.rating} onSelect={handleRating} />
@@ -575,10 +601,19 @@ export default function App() {
               <h2 style={{ fontSize: 22, fontWeight: 800, color: "#000", margin: "0 0 6px", lineHeight: 1.3, letterSpacing: -0.3 }}>
                 How could <span style={{ borderBottom: "3px solid #000", paddingBottom: 1 }}>{team.name}</span> improve?
               </h2>
-              <p style={{ fontSize: 13, color: "#BBB", margin: "0 0 24px" }}>All fields required — pre-filled with N/A if no feedback.</p>
-              <FBField icon="→" label="Start" teamId={team.id} fieldKey="start" feedbackRef={feedbackRef} />
-              <FBField icon="↻" label="Keep" teamId={team.id} fieldKey="keep" feedbackRef={feedbackRef} />
-              <FBField icon="×" label="Drop" teamId={team.id} fieldKey="drop" feedbackRef={feedbackRef} />
+              <p style={{ fontSize: 13, color: "#BBB", margin: "0 0 24px" }}>
+                {feedbackRequired
+                  ? "At least one field is required for scores of 8 or below."
+                  : "All fields optional — pre-filled with N/A if no feedback."}
+              </p>
+              <FBField icon="→" label="Start" teamId={team.id} fieldKey="start" feedbackRef={feedbackRef} required={feedbackRequired} />
+              <FBField icon="↻" label="Keep" teamId={team.id} fieldKey="keep" feedbackRef={feedbackRef} required={feedbackRequired} />
+              <FBField icon="×" label="Drop" teamId={team.id} fieldKey="drop" feedbackRef={feedbackRef} required={feedbackRequired} />
+              {feedbackError && (
+                <p style={{ fontSize: 13, color: "#C62828", margin: "0 0 12px", fontWeight: 600, animation: "fadeScale 0.3s ease" }}>
+                  {feedbackError}
+                </p>
+              )}
               <Btn onClick={handleFeedback} style={{ width: "100%", marginTop: 8, padding: "16px 32px", borderRadius: 14 }}>
                 {teamIdx < eligible.length - 1 ? "Next team" : "Review & submit"} <Key label="⌘↵" />
               </Btn>
