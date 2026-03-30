@@ -94,6 +94,7 @@ const LoadingOverlay = () => (
       ))}
     </div>
     <p style={{ fontSize: 12, color: "#BBB", marginTop: 12 }}>Please wait, this may take a few seconds...</p>
+    <p style={{ fontSize: 11, color: "#CCC", marginTop: 6, fontStyle: "italic" }}>This may take up to 30 seconds.</p>
   </div>
 );
 
@@ -380,6 +381,14 @@ export default function App() {
 
   const handleStrategyNext = () => {
     if (stratRating === null) return;
+    if (stratRating <= 8) {
+      const hasReal = stratFeedback.trim() && stratFeedback.trim() !== DEFAULT_FB;
+      if (!hasReal) {
+        setFeedbackError("Please provide feedback on how we can improve.");
+        return;
+      }
+    }
+    setFeedbackError("");
     nav("forward", "survey");
   };
 
@@ -520,6 +529,11 @@ export default function App() {
                   onBlur={e => { if (!e.target.value.trim()) setStratFeedback(DEFAULT_FB); e.target.style.borderColor = "#E5E5E5"; }}
                   style={{ width: "100%", minHeight: 90, borderRadius: 12, border: "1px solid #E5E5E5", padding: 14, fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box", transition: "all 0.2s", color: stratFeedback === DEFAULT_FB || !stratFeedback ? "#CCC" : "#000" }} />
               </div>
+            )}
+            {feedbackError && (
+              <p style={{ fontSize: 13, color: "#C62828", margin: "0 0 12px", fontWeight: 600, animation: "fadeScale 0.3s ease" }}>
+                {feedbackError}
+              </p>
             )}
             <Btn onClick={handleStrategyNext} disabled={stratRating === null} style={{ width: "100%", padding: "16px 32px", borderRadius: 14 }}>
               Next — rate teams <Key label="⌘↵" />
