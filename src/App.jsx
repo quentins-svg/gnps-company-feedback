@@ -7,10 +7,10 @@ const TEAMS = [
   { id: "ua", name: "User Acquisition", group: "Growth" },
   { id: "crea", name: "Creative", group: "Growth" },
   { id: "admonet", name: "Ad Monetization", group: "Growth" },
-  { id: "infra", name: "Infrastructure", subtitle: "Building & maintaining our AWS infrastructure", group: "E&D" },
-  { id: "centraldata", name: "Central Data", subtitle: "Data Core, VAN — Voodoo Analytics", group: "E&D" },
-  { id: "databi", name: "Data & BI for UA", subtitle: "Bidding strategy, LTV prediction", group: "E&D" },
-  { id: "gamingtech", name: "Gaming Tech", subtitle: "Shared layer of tech incl. Voodoo Sauce/Tune", group: "E&D" },
+  { id: "infra", name: "Infrastructure", subtitle: "Building & Maintaining our AWS Infrastructure", group: "E&D" },
+  { id: "centraldata", name: "Central Data", subtitle: "DataCore, VAN, DataWhisper, Growth & Gaming Analytics", group: "E&D" },
+  { id: "databi", name: "Data & BI for UA", subtitle: "Bidding strat (e.g. LTV prediction)", group: "E&D" },
+  { id: "gamingtech", name: "Gaming Tech", subtitle: "Incl. Voodoo Sauce, Voodoo Tune, layer of tech for studios", group: "E&D" },
   { id: "finance", name: "Finance", group: "Corporate" },
   { id: "legal", name: "Legal", group: "Corporate" },
   { id: "ta", name: "Talent Acquisition", group: "Corporate" },
@@ -341,7 +341,6 @@ export default function App() {
   const handleRating = (score) => {
     if (!team) return;
     setAnswers(a => ({ ...a, [team.id]: { ...a[team.id], rating: score } }));
-    // If score > 8 (promoter), skip feedback and go to next team
     if (score > 8) {
       const fb = feedbackRef.current[team.id] || {};
       setAnswers(a => ({ ...a, [team.id]: { ...a[team.id], rating: score, start: fb.start?.trim() || DEFAULT_FB, keep: fb.keep?.trim() || DEFAULT_FB, drop: fb.drop?.trim() || DEFAULT_FB } }));
@@ -357,7 +356,6 @@ export default function App() {
     const fb = feedbackRef.current[team.id] || {};
     const rating = answers[team.id]?.rating;
 
-    // If rating <= 8, require at least one real feedback field
     if (rating !== undefined && rating <= 8) {
       const hasReal = [fb.start, fb.keep, fb.drop].some(
         v => v && v.trim() && v.trim() !== DEFAULT_FB
@@ -569,7 +567,6 @@ export default function App() {
 
   if (!team) return null;
 
-  // Determine if feedback is required (rating <= 8)
   const currentRating = answers[team.id]?.rating;
   const feedbackRequired = currentRating !== undefined && currentRating <= 8;
 
